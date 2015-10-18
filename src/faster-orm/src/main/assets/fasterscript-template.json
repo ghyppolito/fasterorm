@@ -1,0 +1,26 @@
+{
+  "creation":{
+    "commands": [
+         "INSERT INTO user(id, name) VALUES (1,'XXX')",
+         "INSERT INTO user(id, name) VALUES (2,'YYY')",
+         "INSERT INTO user(id, name) VALUES (3,'ZZZ')"
+      ]    
+  },
+  "upgrade":[
+    {
+      "version": 1,
+      "commands": [
+          "CREATE TABLE type(id INT NOT NULL, name TEXT NOT NULL",
+          "CREATE TABLE car(id INT NOT NULL, name TEXT NOT NULL",
+          "CREATE TABLE group(id INT NOT NULL, name TEXT NOT NULL"
+        ]
+    },
+    {
+      "version": 2,
+      "commands": [
+          "DROP TABLE group",
+          "DELETE FROM car"
+        ]
+    }
+  ]
+}
