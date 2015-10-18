@@ -4,10 +4,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 import android.content.ContentValues;
 import android.database.Cursor;
@@ -20,6 +17,7 @@ import br.com.ghfsoftware.faster.exception.FasterException;
 import br.com.ghfsoftware.faster.exception.InitializeObjectException;
 import br.com.ghfsoftware.faster.exception.InvokeException;
 import br.com.ghfsoftware.faster.exception.TypeNotSupportedException;
+import br.com.ghfsoftware.faster.mapper.ColumnMapper;
 
 /**
  * Class responsible to transform the Object
@@ -118,6 +116,8 @@ public class FasterObjectMapper {
 	private <T> void setJoinValue(ContentValues content, Method method, T table) throws FasterException{
 		
 		if (method.isAnnotationPresent(Join.class)){
+			Join joinAnnotation = method.getAnnotation(Join.class);
+
 			if (content==null){
 				content = new ContentValues();
 			}
@@ -129,11 +129,18 @@ public class FasterObjectMapper {
 				throw new InvokeException(e);
 			}			
 			
-			Map<String, Object> identificators = this.getIdentificators(relTable);
+			List<ColumnMapper> identificators = this.getIdentificators(relTable, joinAnnotation.value());
 			
 			if (identificators!=null && !identificators.isEmpty()){
-				for (Entry<String, Object> entry : identificators.entrySet()){
-					this.putValue(content, entry.getKey(), entry.getValue());
+				for (ColumnMapper columnMapper : identificators){
+
+					String name;
+					if (columnMapper.getRelation()==null){
+						name = columnMapper.getColumn().name();
+					}else{
+						name = columnMapper.getRelation().name();
+					}
+					this.putValue(content, name, columnMapper.getValue());
 				}
 			}
 		}
@@ -146,13 +153,13 @@ public class FasterObjectMapper {
 	 * @throws FasterException
 	 */
 	@SuppressWarnings("unchecked")
-	private <T> Map<String, Object> getIdentificators (T table) throws FasterException{
+	private <T> List<ColumnMapper> getIdentificators (T table, Join.Relation[] relations) throws FasterException{
 		
 		Class<T> clazz = (Class<T>) table.getClass();
 		
 		if (clazz.isAnnotationPresent(Table.class)){
 			
-			Map<String, Object> identificators = new HashMap<String, Object>();
+			List<ColumnMapper> identificators = new ArrayList<ColumnMapper>();
 			
 			for (Method method : clazz.getMethods()){
 				
@@ -160,7 +167,6 @@ public class FasterObjectMapper {
 					
 					if (method.isAnnotationPresent(Column.class)){
 						Column columnAnnotation = method.getAnnotation(Column.class);
-						String name = columnAnnotation.name();
 						
 						Object value;
 						try{
@@ -168,8 +174,21 @@ public class FasterObjectMapper {
 						}catch(Exception e){
 							throw new InvokeException(e);
 						}
-						identificators.put(name, value);
+
+						if (relations!=null){
+							for (Join.Relation relation : relations){
+								if (relation.columnRelated().equals(columnAnnotation.name())){
+									identificators.add(new ColumnMapper(relation,columnAnnotation,value));
+								}
+							}
+						}else{
+							identificators.add(new ColumnMapper(null,columnAnnotation,value));
+						}
+
 					}else if (method.isAnnotationPresent(Join.class)){
+
+						Join joinAnnotation = method.getAnnotation(Join.class);
+						Join.Relation[] relationsChild = joinAnnotation.value();
 						
 						Object value;
 						try{
@@ -178,9 +197,24 @@ public class FasterObjectMapper {
 							throw new InvokeException(e);
 						}
 						
-						Map<String, Object> relIdentificators = this.getIdentificators(value);
-						
-						identificators.putAll(relIdentificators);
+						List<ColumnMapper> relIdentificators = this.getIdentificators(value, relationsChild);
+
+						if (relationsChild!=null && relationsChild.length>0){
+							for (Join.Relation relation : relations){
+								if (relIdentificators!=null && !relIdentificators.isEmpty()){
+
+									for (ColumnMapper columnMapper : relIdentificators){
+
+										if (columnMapper.getRelation()!=null && relation != columnMapper.getRelation() && relation.columnRelated().equals(columnMapper.getRelation().name())){
+											columnMapper.setRelation(relation);
+										}
+
+									}
+								}
+							}
+						}
+
+						identificators.addAll(relIdentificators);
 					}
 				}
 				

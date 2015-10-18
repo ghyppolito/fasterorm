@@ -38,6 +38,9 @@ public @interface SqlScript {
 	 * @author gustavo
 	 *
 	 */
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.METHOD)
+	@Documented
 	public @interface Parameter{
 		
 		/**
