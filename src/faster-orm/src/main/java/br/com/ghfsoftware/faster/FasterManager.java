@@ -20,6 +20,7 @@ import br.com.ghfsoftware.faster.annotation.Table.Id;
 import br.com.ghfsoftware.faster.exception.AnnotationRuntimeException;
 import br.com.ghfsoftware.faster.exception.FasterException;
 import br.com.ghfsoftware.faster.exception.InvokeException;
+import br.com.ghfsoftware.faster.exception.SQLiteObjectRuntimeException;
 import br.com.ghfsoftware.faster.mapper.CreationExecutionMapper;
 import br.com.ghfsoftware.faster.mapper.ColumnMapper;
 import br.com.ghfsoftware.faster.mapper.ParameterMapper;
@@ -112,7 +113,7 @@ public class FasterManager {
 	 */
 	public void beginTransaction(){
 		if (sqlite==null){
-			//TODO: colocar exceçao
+			throw new SQLiteObjectRuntimeException();
 		}else{
 			if (!sqlite.inTransaction()){
 				sqlite.beginTransaction();
@@ -125,7 +126,7 @@ public class FasterManager {
 	 */
 	public void endTransaction(){
 		if (sqlite==null){
-			//TODO: colocar exceçao
+			throw new SQLiteObjectRuntimeException();
 		}else{
 			if (sqlite.inTransaction()){
 				sqlite.endTransaction();
@@ -138,7 +139,7 @@ public class FasterManager {
 	 */
 	public void commit(){
         if (sqlite==null){
-			//TODO: colocar exceçao
+			throw new SQLiteObjectRuntimeException();
 		}else{
 			if (sqlite.inTransaction()){
 				sqlite.setTransactionSuccessful();
