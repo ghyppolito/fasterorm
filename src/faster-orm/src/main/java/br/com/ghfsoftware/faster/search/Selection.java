@@ -17,7 +17,7 @@ public class Selection<T> {
 
 	/**
 	 * Constructor
-	 * @param clazz
+	 * @param clazz: class
 	 */
 	private Selection(Class<T> clazz){
 		this.classMapping = clazz;
@@ -25,7 +25,7 @@ public class Selection<T> {
 	
 	/**
 	 * Factory for selection
-	 * @param clazz
+	 * @param clazz: class
 	 * @return selection
 	 */
 	public static <T> Selection<T> create(Class<T> clazz){
@@ -34,35 +34,38 @@ public class Selection<T> {
 	
 	/**
 	 * Add new column in selection
-	 * @param column
+	 * @param columnName: column name
 	 */
-	public void addColumn(String columnName){
+	public Selection<T> addColumn(String columnName){
 		if (columns==null){
 			columns = new ArrayList<Column>();
 		}
 		columns.add(Column.create(columnName));
+		return this;
 	}
 	
 	/**
 	 * Add new column in selection
-	 * @param column
+	 * @param columnName: column name
 	 */
-	public void addColumn(String columnName, String alias){
+	public Selection<T> addColumn(String columnName, String alias){
 		if (columns==null){
 			columns = new ArrayList<Column>();
 		}
 		columns.add(Column.create(columnName, alias));
+		return this;
 	}
 	
 	/**
 	 * Add new column in selection
-	 * @param column
+	 * @param columnName: column name
 	 */
-	public void addColumn(String columnName, String alias, String table){
+	public Selection<T> addColumn(String columnName, String alias, String table){
 		if (columns==null){
 			columns = new ArrayList<Column>();
 		}
 		columns.add(Column.create(columnName, alias, table));
+		return this;
 	}
 	
 	/**

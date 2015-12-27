@@ -18,7 +18,7 @@ public class OrderBy {
 	
 	/**
 	 * Constructor
-	 * @param order
+	 * @param order: order enum
 	 */
 	public OrderBy(Order order){
 		this.order = order;
