@@ -7,6 +7,7 @@ import br.com.ghfsoftware.faster.annotation.Join;
 import br.com.ghfsoftware.faster.annotation.JoinList;
 import br.com.ghfsoftware.faster.annotation.Table.Id;
 import br.com.ghfsoftware.faster.exception.FasterException;
+import br.com.ghfsoftware.faster.exception.FasterRuntimeException;
 import br.com.ghfsoftware.faster.exception.InitializeObjectException;
 import br.com.ghfsoftware.faster.exception.InvokeException;
 
@@ -24,13 +25,13 @@ public class FasterLazyInitializer {
 	/**
 	 * Initialize the lazy objects
 	 * 
-	 * @param fasterManager
-	 * @param table
+	 * @param fasterManager: faster manager object
+	 * @param table: table object
 	 * @return table object
 	 * @throws InvokeException 
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> T initialize(FasterManager fasterManager, T table) throws FasterException{
+	public static <T> T initialize(FasterManager fasterManager, T table) throws FasterRuntimeException{
 		
 		Class<T> clazz = (Class<T>) table.getClass();
 		

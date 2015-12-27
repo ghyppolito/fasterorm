@@ -31,10 +31,10 @@ public abstract class FasterSQLiteHelper extends SQLiteOpenHelper {
 	/**
 	 * Constructor 
 	 * 
-	 * @param context
-	 * @param name
-	 * @param factory
-	 * @param version
+	 * @param context: context
+	 * @param name: name
+	 * @param factory: cursor factory
+	 * @param version: version
 	 */
 	public FasterSQLiteHelper(Context context, String name,
 			CursorFactory factory, int version) {
@@ -48,11 +48,11 @@ public abstract class FasterSQLiteHelper extends SQLiteOpenHelper {
 	/**
 	 * Constructor 
 	 * 
-	 * @param context
-	 * @param name
-	 * @param factory
-	 * @param version
-	 * @param errorHandler
+	 * @param context: context
+	 * @param name: name
+	 * @param factory: cursor factory
+	 * @param version: version
+	 * @param errorHandler: error handler
 	 */
 	public FasterSQLiteHelper(Context context, String name,
 			CursorFactory factory, int version,
@@ -85,7 +85,7 @@ public abstract class FasterSQLiteHelper extends SQLiteOpenHelper {
 			FasterConfig config = clazz.getAnnotation(FasterConfig.class);
 			
 			FasterManager fasterManager = new FasterManager(this, arg0);
-			Set<Class<?>> classes = ClassMapper.list(config.packageName());
+			String[] classes = ClassMapper.list(config.packageName(), context);
 			
 			fasterManager.createDatabase(classes);
 			
@@ -95,8 +95,6 @@ public abstract class FasterSQLiteHelper extends SQLiteOpenHelper {
 				List<String> commands = JsonConfigUtil.getLoadCommands(script.getCreation());
 				fasterManager.executeCommands(commands);
 			}
-			
-			fasterManager.close();
 			
 		}else{
 			throw new AnnotationRuntimeException();
@@ -112,7 +110,7 @@ public abstract class FasterSQLiteHelper extends SQLiteOpenHelper {
 		if (script!=null && script.getUpgrade()!=null){
 			
 			FasterManager fasterManager = new FasterManager(this, arg0);
-			
+
 			for (int version = arg1;version<arg2;version++){
 				Map<Integer, List<String>> commands = JsonConfigUtil.getLoadCommands(script.getUpgrade());
 				fasterManager.executeCommands(commands.get(version));

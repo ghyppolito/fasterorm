@@ -4,7 +4,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import android.content.ContentValues;
 import android.database.Cursor;
@@ -14,6 +16,7 @@ import br.com.ghfsoftware.faster.annotation.Table.Column;
 import br.com.ghfsoftware.faster.annotation.Table.Id;
 import br.com.ghfsoftware.faster.exception.AnnotationRuntimeException;
 import br.com.ghfsoftware.faster.exception.FasterException;
+import br.com.ghfsoftware.faster.exception.FasterRuntimeException;
 import br.com.ghfsoftware.faster.exception.InitializeObjectException;
 import br.com.ghfsoftware.faster.exception.InvokeException;
 import br.com.ghfsoftware.faster.exception.TypeNotSupportedException;
@@ -28,6 +31,8 @@ import br.com.ghfsoftware.faster.mapper.ColumnMapper;
 public class FasterObjectMapper {
 
 	private static FasterObjectMapper instance;
+	private static final String GET = "get";
+	private static final String IS = "is";
 	
 	/**
 	 * Constructor
@@ -50,22 +55,22 @@ public class FasterObjectMapper {
 	
 	/**
 	 * Convert the table fields in ContentValues
-	 * @param table
+	 * @param table: table
 	 * @return ContentValues
 	 */
-	public <T> ContentValues toContentValues(T table) throws FasterException{
+	public <T> ContentValues toContentValues(T table) throws FasterRuntimeException{
 		return toContentValues(null, table);
 	}
 	
 	/**
-	 * 
-	 * @param content
-	 * @param table
-	 * @return
-	 * @throws FasterException
+	 * Create content values
+	 * @param content: content values
+	 * @param table table
+	 * @return content values
+	 * @throws FasterRuntimeException
 	 */
 	@SuppressWarnings("unchecked")
-	private <T> ContentValues toContentValues(ContentValues content, T table) throws FasterException{
+	private <T> ContentValues toContentValues(ContentValues content, T table) throws FasterRuntimeException{
 		
 		Class<T> clazz = (Class<T>)table.getClass();
 		
@@ -80,12 +85,12 @@ public class FasterObjectMapper {
 	/**
 	 * Set the value of methods that it have Column annotation
 	 * in content
-	 * @param content
-	 * @param method
-	 * @param table
-	 * @throws FasterException
+	 * @param content: content
+	 * @param method: method class
+	 * @param table: table class
+	 * @throws FasterRuntimeException
 	 */
-	private <T> void setColumnValue(ContentValues content, Method method, T table) throws FasterException{
+	private <T> void setColumnValue(ContentValues content, Method method, T table) throws FasterRuntimeException{
 		
 		if (method.isAnnotationPresent(Column.class)){
 			if (content==null){
@@ -108,12 +113,12 @@ public class FasterObjectMapper {
 	 * Set the value of methods that it have Column annotation
 	 * in content
 	 * 
-	 * @param content
-	 * @param method
-	 * @param table
-	 * @throws FasterException
+	 * @param content: content
+	 * @param method: method class
+	 * @param table: table class
+	 * @throws FasterRuntimeException
 	 */
-	private <T> void setJoinValue(ContentValues content, Method method, T table) throws FasterException{
+	private <T> void setJoinValue(ContentValues content, Method method, T table) throws FasterRuntimeException{
 		
 		if (method.isAnnotationPresent(Join.class)){
 			Join joinAnnotation = method.getAnnotation(Join.class);
@@ -148,12 +153,12 @@ public class FasterObjectMapper {
 	
 	/**
 	 * Class to get identificators about a table
-	 * @param table
+	 * @param table: table class
 	 * @return map with identificators
-	 * @throws FasterException
+	 * @throws FasterRuntimeException
 	 */
 	@SuppressWarnings("unchecked")
-	private <T> List<ColumnMapper> getIdentificators (T table, Join.Relation[] relations) throws FasterException{
+	private <T> List<ColumnMapper> getIdentificators (T table, Join.Relation[] relations) throws FasterRuntimeException{
 		
 		Class<T> clazz = (Class<T>) table.getClass();
 		
@@ -178,11 +183,11 @@ public class FasterObjectMapper {
 						if (relations!=null){
 							for (Join.Relation relation : relations){
 								if (relation.columnRelated().equals(columnAnnotation.name())){
-									identificators.add(new ColumnMapper(relation,columnAnnotation,value));
+									identificators.add(new ColumnMapper(relation,columnAnnotation,value, clazz));
 								}
 							}
 						}else{
-							identificators.add(new ColumnMapper(null,columnAnnotation,value));
+							identificators.add(new ColumnMapper(null,columnAnnotation,value, clazz));
 						}
 
 					}else if (method.isAnnotationPresent(Join.class)){
@@ -232,32 +237,32 @@ public class FasterObjectMapper {
 	
 	/**
 	 * Convert Cursor in Object
-	 * @param cursor
-	 * @param clazz
+	 * @param cursor: cursor
+	 * @param clazz: class
 	 * @return list objects
 	 * @throws InitializeObjectException 
 	 * @throws InvokeException 
 	 */
-	public <T> List<T> toObject (Cursor cursor, Class<T> clazz) throws FasterException{
+	public <T> List<T> toObject (Cursor cursor, Class<T> clazz) throws FasterRuntimeException{
 		
 		List<T> list = null;
 			
-			if (cursor != null && cursor.moveToFirst()) {
-				list = new ArrayList<T>();
-				
-				do {
-					T object;
-					try {
-						object = clazz.newInstance();
-					} catch (Exception e) {
-						throw new InitializeObjectException(e);
-					}
-					
-					populateObject(object, cursor);
-					list.add(object);
-	            	
-	            }while (cursor.moveToNext());
-			}
+		if (cursor != null && cursor.moveToFirst()) {
+			list = new ArrayList<T>();
+
+			do {
+				T object;
+				try {
+					object = clazz.newInstance();
+				} catch (Exception e) {
+					throw new InitializeObjectException(e);
+				}
+
+				populateObject(object, cursor);
+				list.add(object);
+
+			}while (cursor.moveToNext());
+		}
 			 
 		
 		return list;
@@ -266,22 +271,24 @@ public class FasterObjectMapper {
 	/**
 	 * Method to populate the object table
 	 * 
-	 * @param table
-	 * @param cursor
+	 * @param table: table object
+	 * @param cursor: cursor
 	 * @return if is populated
 	 * @throws FasterException
 	 */
 	@SuppressWarnings("unchecked")
-	private <T> boolean populateObject(T table, Cursor cursor) throws FasterException{
+	private <T> boolean populateObject(T table, Cursor cursor) throws FasterRuntimeException{
 		
 		Class<T> clazz = (Class<T>) table.getClass();
 		boolean isSet = false;
+
+		Map<String, String> aliasMap = getAliasMap(clazz);
 		
-		for (Field field : clazz.getFields()){
+		for (Field field : clazz.getDeclaredFields()){
 			
 			try {
 				
-				Class<?> fieldClass = field.getClass();
+				Class<?> fieldClass = field.getType();
 					
 				if (fieldClass.isAnnotationPresent(Table.class)){
 
@@ -289,8 +296,14 @@ public class FasterObjectMapper {
 					isSet = populateObject(tableJoin, cursor);
 				}else{
 					String name = field.getName();
+					if (aliasMap.containsKey(name)){
+						name = aliasMap.get(name);
+					}
+
 					Object value = this.getCursorValue(cursor, name, fieldClass);
+
 					if (value!=null){
+						field.setAccessible(true);
 						field.set(table, value);
 						isSet = true;
 					}
@@ -304,13 +317,42 @@ public class FasterObjectMapper {
 		return isSet;
 		
 	}
+
+	/**
+	 * Mapping the columns and fields of table
+	 * @param clazz: table class
+	 * @param <T>: generic class
+	 * @return alias map
+	 */
+	private <T> Map<String, String> getAliasMap(Class<T> clazz){
+
+		Map<String, String> aliasMap = new HashMap<>();
+
+		for (Method method : clazz.getMethods()) {
+
+			if (method.isAnnotationPresent(Column.class)){
+				Column columnAnnotation = method.getAnnotation(Column.class);
+				String fieldName = method.getName();
+				if (fieldName.startsWith(GET)) {
+					fieldName = fieldName.replace(GET, "");
+				}else if (fieldName.startsWith(IS)){
+					fieldName = fieldName.replace(IS, "");
+				}
+				fieldName = fieldName.substring(0,1).toLowerCase() + fieldName.substring(1, fieldName.length());
+
+				aliasMap.put(fieldName, columnAnnotation.name());
+			}
+		}
+
+		return aliasMap;
+	}
 	
 	/**
 	 * Get cursor field value
 	 * 
-	 * @param cursor
-	 * @param fieldName
-	 * @param fieldClass
+	 * @param cursor: cursor
+	 * @param fieldName: field name
+	 * @param fieldClass field class
 	 * @return cursor field value
 	 * @throws TypeNotSupportedException 
 	 */
@@ -346,11 +388,11 @@ public class FasterObjectMapper {
 	
 	/**
 	 * Put values into content
-	 * @param content
-	 * @param name
-	 * @param value
+	 * @param content: content
+	 * @param name: field name
+	 * @param value: field value
 	 */
-	private void putValue(ContentValues content, String name, Object value) throws FasterException{
+	private void putValue(ContentValues content, String name, Object value) throws FasterRuntimeException{
 		
 		if(value instanceof String){
 			content.put(name, (String)value);

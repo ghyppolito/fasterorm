@@ -19,6 +19,8 @@ import br.com.ghfsoftware.faster.annotation.Table.Column;
 import br.com.ghfsoftware.faster.annotation.Table.Id;
 import br.com.ghfsoftware.faster.exception.AnnotationRuntimeException;
 import br.com.ghfsoftware.faster.exception.FasterException;
+import br.com.ghfsoftware.faster.exception.FasterRuntimeException;
+import br.com.ghfsoftware.faster.exception.InitializeObjectException;
 import br.com.ghfsoftware.faster.exception.InvokeException;
 import br.com.ghfsoftware.faster.exception.SQLiteObjectRuntimeException;
 import br.com.ghfsoftware.faster.mapper.CreationExecutionMapper;
@@ -45,7 +47,7 @@ public class FasterManager {
 	private static final String AND = "AND";
 	private static final String POINT = ".";
 	private static final String COMMA = ",";
-		
+
 	private FasterSQLiteHelper fasterHelper;
 	private SQLiteDatabase sqlite;
 	
@@ -60,7 +62,7 @@ public class FasterManager {
 	
 	/**
 	 * Constructor
-	 * 
+	 *
 	 * @param fasterHelper: fasterHelper object
 	 * @param sqlite: sqlite object
 	 */
@@ -78,7 +80,7 @@ public class FasterManager {
 		if (this.sqlite!=null){
 			sqlite.close();
 		}
-		
+
 		this.sqlite = fasterHelper.getWritableDatabase();
 		return this.sqlite;
 	}
@@ -166,12 +168,12 @@ public class FasterManager {
 	 * @return long
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> Long insert(T table) throws FasterException{
+	public <T> Long insert(T table) throws FasterRuntimeException{
 		
 		long valueReturn;
 		Class<T> clazz = (Class<T>)table.getClass();
 		if (clazz.isAnnotationPresent(Table.class)){
-			
+
 			if (sqlite==null){
 				this.openWritable();
 			}
@@ -198,7 +200,7 @@ public class FasterManager {
 	 * @return int
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> Integer update(T table) throws FasterException{
+	public <T> Integer update(T table) throws FasterRuntimeException{
 		
 		int valueReturn;
 		Class<T> clazz = (Class<T>)table.getClass();
@@ -260,7 +262,7 @@ public class FasterManager {
 	 * @throws FasterException 
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> Integer delete(T table) throws FasterException{
+	public <T> Integer delete(T table) throws FasterRuntimeException{
 		
 		int valueReturn;
 		
@@ -268,7 +270,7 @@ public class FasterManager {
 		
 		Table tableAnnotation = clazz.getAnnotation(Table.class);
 		String tableName = tableAnnotation.name();
-			
+
 		if (sqlite==null){
 			this.openWritable();
 		}
@@ -312,10 +314,10 @@ public class FasterManager {
 	 * @return result
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> Result<T> get(T table) throws FasterException{
+	public <T> Result<T> get(T table) throws FasterRuntimeException{
 		
 		Class<T> clazz = (Class<T>) table.getClass();
-		
+
 		if (sqlite==null){
 			this.openReadable();
 		}
@@ -332,44 +334,50 @@ public class FasterManager {
 		
 		boolean isFirstLoop = true;
 		List<String> values = new ArrayList<String>();
-		for (ColumnMapper mapper : search){
-			
-			if (!isFirstLoop){
-				sb.append(" ");
-				sb.append(AND);
-				sb.append(" ");
-			}
-			
-			String valueCase;
-			if (mapper.getColumn().isIgnoreCase()){
-				sb.append(" UPPER(");
 
-				if (mapper.getRelation()==null) {
-					sb.append(mapper.getColumn().name());
-				}else{
-					sb.append(mapper.getRelation().name());
-				}
-				sb.append(")");
-				sb.append(EQUAL);
-				sb.append(PARAM);
-				valueCase = (mapper.getValue()==null?null:mapper.getValue().toString().toUpperCase());
-			}else{
-				sb.append(mapper.getColumn().name());
-				sb.append(EQUAL);
-				sb.append(PARAM);
-				valueCase = mapper.getValue()==null?null:mapper.getValue().toString();
-			}
-			
-			values.add(valueCase);
-			isFirstLoop = false;
-		}
-		//Create args selection
-		String[] args = values.toArray(new String[]{});
-		
-		List<String> columns = getAllColumns(clazz, false);
-		
-		Cursor cursor = sqlite.query(tableName, columns.toArray(new String[]{}), sb.toString(), args, null, null, null);
-		
+        List<String> columns = getAllColumns(clazz, false);
+
+        Cursor cursor;
+        if (search==null) {
+            cursor = sqlite.query(tableName, columns.toArray(new String[]{}), null, null, null, null, null);
+        }else{
+            for (ColumnMapper mapper : search) {
+
+                if (!isFirstLoop) {
+                    sb.append(" ");
+                    sb.append(AND);
+                    sb.append(" ");
+                }
+
+                String valueCase;
+                if (mapper.getColumn().isIgnoreCase()) {
+                    sb.append(" UPPER(");
+
+                    if (mapper.getRelation() == null) {
+                        sb.append(mapper.getColumn().name());
+                    } else {
+                        sb.append(mapper.getRelation().name());
+                    }
+                    sb.append(")");
+                    sb.append(EQUAL);
+                    sb.append(PARAM);
+                    valueCase = (mapper.getValue() == null ? null : mapper.getValue().toString().toUpperCase());
+                } else {
+                    sb.append(mapper.getColumn().name());
+                    sb.append(EQUAL);
+                    sb.append(PARAM);
+                    valueCase = mapper.getValue() == null ? null : mapper.getValue().toString();
+                }
+
+                values.add(valueCase);
+                isFirstLoop = false;
+            }
+
+            //Create args selection
+            String[] args = values.toArray(new String[]{});
+
+            cursor = sqlite.query(tableName, columns.toArray(new String[]{}), sb.toString(), args, null, null, null);
+        }
 		FasterObjectMapper fMapper = FasterObjectMapper.getInstance();
 		List<T> result = fMapper.toObject(cursor, clazz);
 		
@@ -427,7 +435,7 @@ public class FasterManager {
 	 * @throws FasterException
 	 */
 	@SuppressWarnings("unchecked")
-	private <T> List<ColumnMapper> createListJoinMapper(T table, boolean onlyId, Join.Relation[] relations) throws FasterException{
+	private <T> List<ColumnMapper> createListJoinMapper(T table, boolean onlyId, Join.Relation[] relations) throws FasterRuntimeException{
 		
 		Class<T> clazz = (Class<T>)table.getClass();
 		List<ColumnMapper> columnMappers = null;
@@ -509,7 +517,7 @@ public class FasterManager {
 	 * @return column mapper
 	 * @throws FasterException
 	 */
-	private <T> ColumnMapper createJoinMapper (Method method, T table, Join.Relation[] relations) throws FasterException{
+	private <T> ColumnMapper createJoinMapper (Method method, T table, Join.Relation[] relations) throws FasterRuntimeException{
 		
 		ColumnMapper columnMapper =null;
 		Column columnAnnotation = method.getAnnotation(Column.class);
@@ -526,11 +534,11 @@ public class FasterManager {
 			if (relations!=null && relations.length>0){
 				for (Join.Relation relation : relations){
 					if (relation.columnRelated().equals(columnAnnotation.name())){
-						columnMapper = new ColumnMapper(null, columnAnnotation, value);
+						columnMapper = new ColumnMapper(null, columnAnnotation, value, table.getClass());
 					}
 				}
 			}else {
-				columnMapper = new ColumnMapper(null, columnAnnotation, value);
+				columnMapper = new ColumnMapper(null, columnAnnotation, value, table.getClass());
 			}
 		}
 		
@@ -543,9 +551,10 @@ public class FasterManager {
 	 * 
 	 * @param query: query object
 	 * @return result
+	 * @throws FasterRuntimeException
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> Result<T> find(Object query) throws FasterException{
+	public <T> Result<T> find(Object query) throws FasterRuntimeException{
 		
 		Class<?> clazz = query.getClass();
 		
@@ -593,7 +602,7 @@ public class FasterManager {
 					}
 				}
 			}
-			
+
 			if (sqlite==null){
 				this.openReadable();
 			}
@@ -623,9 +632,9 @@ public class FasterManager {
 	 * Execute SQL search with the finder object
 	 * @param finder: finder object
 	 * @return selection object
-	 * @throws FasterException
+	 * @throws FasterRuntimeException
 	 */
-	public <T> Result<T> find(Finder finder) throws FasterException{
+	public <T> Result<T> find(Finder finder) throws FasterRuntimeException{
 		
 		String tableName = finder.getTable();
 		List<br.com.ghfsoftware.faster.search.Join<?>> joins = finder.getJoin();
@@ -746,8 +755,8 @@ public class FasterManager {
 			sbSql.append(" LIMIT ");
 			sbSql.append(limit);
 		}
-		
-		if (sqlite==null){
+
+		if (sqlite==null) {
 			this.openReadable();
 		}
 
@@ -777,9 +786,9 @@ public class FasterManager {
 	/**
 	 * Execute SQL script
 	 * @param script: Script object
-	 * @throws FasterException
+	 * @throws FasterRuntimeException
 	 */
-	public void execute(Object script) throws FasterException{
+	public void execute(Object script) throws FasterRuntimeException{
 		
 		Class<?> clazz = script.getClass();
 		
@@ -826,7 +835,7 @@ public class FasterManager {
 					}
 				}
 			}
-			
+
 			if (sqlite==null){
 				this.openWritable();
 			}
@@ -847,15 +856,22 @@ public class FasterManager {
 	 * Create all tables
 	 * @param classes: class found
 	 */
-	public void createDatabase(Set<Class<?>> classes){
+	public void createDatabase(String[] classes){
 		
-		if (classes!=null && !classes.isEmpty()){
+		if (classes!=null && classes.length > 0){
 			
 			Map<String, CreationExecutionMapper> mapperExecution = new HashMap<String, CreationExecutionMapper>();
 			Map<String, List<String>> mapperTableDependencies = new HashMap<String, List<String>>();
 					
-			for (Class<?> clazz : classes){
-				
+			for (String className : classes){
+
+				Class<?> clazz;
+				try{
+					clazz = Class.forName(className);
+				} catch (Exception e){
+					throw new InitializeObjectException(e);
+				}
+
 				if (clazz.isAnnotationPresent(Table.class)){
 					
 					Table tableAnnotation = clazz.getAnnotation(Table.class);
@@ -867,16 +883,16 @@ public class FasterManager {
 					sbSql.append(" (");
 					
 					List<String> ids = new ArrayList<String>();
-					List<String> fks = new ArrayList<String>();
+					List<ColumnMapper> fks = new ArrayList<ColumnMapper>();
 					
 					boolean isFirstLoop = true;
 					for (Method method : clazz.getMethods()){
-						
-						if (!isFirstLoop){
-							sbSql.append(COMMA);
-						}
 
 						if (method.isAnnotationPresent(Column.class)){
+
+							if (!isFirstLoop){
+								sbSql.append(COMMA);
+							}
 							
 							Column columnAnnotation = method.getAnnotation(Column.class);
 							String columnName = columnAnnotation.name();
@@ -922,7 +938,7 @@ public class FasterManager {
 							}
 							  
 							
-							List<ColumnMapper> identificators = this.getIdJoinFields(method.getReturnType().getClass(), joinAnnotation.value());
+							List<ColumnMapper> identificators = this.getIdJoinFields(method.getReturnType(), joinAnnotation.value());
 							
 							boolean isPK=false;
 							if (method.isAnnotationPresent(Id.class)){
@@ -932,6 +948,10 @@ public class FasterManager {
 							if (identificators!=null && !identificators.isEmpty()){
 								
 								for (ColumnMapper columnMapper : identificators){
+
+									if (!isFirstLoop){
+										sbSql.append(COMMA);
+									}
 
 									Join.Relation relationAnnotation = columnMapper.getRelation();
 									Column columnAnnotation = columnMapper.getColumn();
@@ -959,7 +979,7 @@ public class FasterManager {
 										sbSql.append("NOT NULL");
 									}
 									
-									fks.add(columnName);
+									fks.add(columnMapper);
 									
 									isFirstLoop = false;
 								}
@@ -981,19 +1001,49 @@ public class FasterManager {
 						}
 						sbSql.append(")");
 					}
-					
-					if (!ids.isEmpty()){
-						sbSql.append(", FOREIGN KEY (");
-						isFirstLoop=true;
-						for (String columnName : fks){
-							if (!isFirstLoop){
-								sbSql.append(COMMA);
+
+					if (!fks.isEmpty()){
+
+						Map<String, List<ColumnMapper>> fkMap = getFkGroup(fks);
+
+						Set<String> tableReferences = fkMap.keySet();
+
+						for (String key : tableReferences){
+
+							sbSql.append(", FOREIGN KEY (");
+							isFirstLoop=true;
+							for (ColumnMapper column : fkMap.get(key)){
+								if (!isFirstLoop){
+									sbSql.append(COMMA);
+								}
+
+								String columnName = column.getColumn().name();
+								if (column.getRelation()!=null){
+									columnName = column.getRelation().name();
+								}
+								sbSql.append(columnName);
+								isFirstLoop=false;
 							}
-							sbSql.append(columnName);
+							sbSql.append(")");
+							sbSql.append(" REFERENCES ");
+							sbSql.append(" ");
+							sbSql.append(key);
+							sbSql.append("(");
+
+							isFirstLoop=true;
+							for (ColumnMapper column : fkMap.get(key)){
+								if (!isFirstLoop){
+									sbSql.append(COMMA);
+								}
+
+								String columnName = column.getColumn().name();
+								sbSql.append(columnName);
+								isFirstLoop=false;
+							}
+							sbSql.append(")");
 						}
-						sbSql.append(")");
+
 					}
-					
 					sbSql.append(" )");
 					
 					if (FasterConfigInfo.getInstance().isShowSql()){
@@ -1018,6 +1068,34 @@ public class FasterManager {
 			
 		}
 		
+	}
+
+	/**
+	 * Method to organize the foreign keys
+	 * @param fks: foreign key list
+	 * @return map with the foreign keys organized
+	 */
+	private Map<String, List<ColumnMapper>> getFkGroup(List<ColumnMapper> fks){
+
+		Map<String, List<ColumnMapper>> fkMap = new HashMap<>();
+
+		for (ColumnMapper column : fks){
+
+			Class<?> tableClass = column.getTableClass();
+
+			if (tableClass.isAnnotationPresent(Table.class)) {
+
+				Table tableAnnotation = tableClass.getAnnotation(Table.class);
+
+				if (!fkMap.containsKey(tableAnnotation.name())){
+					fkMap.put(tableAnnotation.name(), new ArrayList<ColumnMapper>());
+				}
+				fkMap.get(tableAnnotation.name()).add(column);
+
+			}
+		}
+
+		return fkMap;
 	}
 	
 	/**
@@ -1094,18 +1172,18 @@ public class FasterManager {
 								Join.Relation relationAnnotation = relation;
 
 								if (relationAnnotation.columnRelated().equals(columnAnnotation.name())){
-									identificators.add(new ColumnMapper(relation, columnAnnotation));
+									identificators.add(new ColumnMapper(relation, columnAnnotation, clazz));
 								}
 							}
 						}else {
-							identificators.add(new ColumnMapper(null, columnAnnotation));
+							identificators.add(new ColumnMapper(null, columnAnnotation, clazz));
 						}
 					}else if (method.isAnnotationPresent(Join.class)){
 
 						Join joinAnnotation = method.getAnnotation(Join.class);
 						Join.Relation[] relationsChild = joinAnnotation.value();
 
-						List<ColumnMapper> relIdentificators = this.getIdJoinFields(method.getReturnType().getClass(), relationsChild);
+						List<ColumnMapper> relIdentificators = this.getIdJoinFields(method.getReturnType(), relationsChild);
 
 						if (relationsChild!=null) {
 							for (Join.Relation relation : relations) {
@@ -1171,11 +1249,10 @@ public class FasterManager {
 		/**
 		 * Get unique result
 		 * @return unique result
-		 * @throws FasterException
 		 */
-		public T unique() throws FasterException{
+		public T unique(){
 			if (this.results==null || this.results.isEmpty()){
-				throw new FasterException();
+				return null;
 			}else{
 				return results.get(0);
 			}
