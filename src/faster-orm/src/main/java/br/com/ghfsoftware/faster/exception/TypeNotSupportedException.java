@@ -6,7 +6,7 @@ package br.com.ghfsoftware.faster.exception;
  * @version 1.0
  *
  */
-public class TypeNotSupportedException extends FasterException {
+public class TypeNotSupportedException extends FasterRuntimeException {
 	
 	/**
 	 * Serial version

@@ -7,7 +7,7 @@ package br.com.ghfsoftware.faster.exception;
  * @version 1.0
  *
  */
-public class InitializeObjectException extends FasterException {
+public class InitializeObjectException extends FasterRuntimeException {
 
 	/**
 	 * Serial version
