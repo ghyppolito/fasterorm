@@ -12,16 +12,18 @@ public class ColumnMapper {
     private Join.Relation relation;
     private Table.Column column;
     private Object value;
+    private Class<?> tableClass;
 
     /**
      * Constructor
      * @param relation: relation annotation
      * @param column: column annotation
+     * @param tableClass: table class
      */
-    public ColumnMapper(Join.Relation relation, Table.Column column){
+    public ColumnMapper(Join.Relation relation, Table.Column column, Class<?> tableClass){
         this.relation = relation;
         this.column = column;
-
+        this.tableClass = tableClass;
     }
 
     /**
@@ -29,11 +31,13 @@ public class ColumnMapper {
      * @param relation: relation annotation
      * @param column: column annotation
      * @param value: value
+     * @param tableClass: table class
      */
-    public ColumnMapper(Join.Relation relation, Table.Column column, Object value){
+    public ColumnMapper(Join.Relation relation, Table.Column column, Object value, Class<?> tableClass){
         this.relation = relation;
         this.column = column;
         this.value = value;
+        this.tableClass = tableClass;
 
     }
 
@@ -67,6 +71,14 @@ public class ColumnMapper {
      */
     public Object getValue() {
         return value;
+    }
+
+    /**
+     * Get the class that represents the table
+     * @return table class
+     */
+    public Class<?> getTableClass() {
+        return tableClass;
     }
 }
 
