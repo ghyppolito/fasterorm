@@ -1,12 +1,14 @@
 package br.com.ghfsoftware.faster.util;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 
 import br.com.ghfsoftware.faster.exception.ConfigJsonLoaderException;
 import br.com.ghfsoftware.faster.json.Creation;
@@ -32,9 +34,11 @@ public class JsonConfigUtil {
 		
 		try{
 
-			ObjectMapper mapper = new ObjectMapper();
+			final BufferedReader reader = new BufferedReader(new InputStreamReader(file));
+
+			Gson gson = new Gson();
 			Script script;
-			script = mapper.readValue(file, Script.class);
+			script = gson.fromJson(reader, Script.class);
 			
 			return script;
 			
@@ -46,14 +50,14 @@ public class JsonConfigUtil {
 	
 	/**
 	 * Load the creation commands
-	 * @param creation
+	 * @param creation: creation object
 	 * @return creation commands list
 	 */
 	public static List<String> getLoadCommands (final Creation creation){
 		
 		if (creation!=null){
 			
-			if (creation.getCommands()!=null && creation.getCommands().isEmpty()){
+			if (creation.getCommands()!=null && !creation.getCommands().isEmpty()){
 				
 				return creation.getCommands();
 			}
@@ -66,7 +70,7 @@ public class JsonConfigUtil {
 	/**
 	 * Load the upgrade SQL commands
 	 * 
-	 * @param upgrade
+	 * @param upgrade: upgrade object
 	 * @return map with the upgrade commands
 	 */
 	public static Map<Integer,List<String>> getLoadCommands (final List<Upgrade> upgrade){
