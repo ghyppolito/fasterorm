@@ -88,6 +88,7 @@ public abstract class FasterSQLiteHelper extends SQLiteOpenHelper {
 			String[] classes = ClassMapper.list(config.packageName(), context);
 			
 			fasterManager.createDatabase(classes);
+			fasterManager.executeCreationSequences(classes);
 			
 			Script script = verifyConfiguration();
 			
@@ -104,16 +105,23 @@ public abstract class FasterSQLiteHelper extends SQLiteOpenHelper {
 
 	@Override
 	public void onUpgrade(SQLiteDatabase arg0, int arg1, int arg2) {
-		
-		Script script = verifyConfiguration();
-	
-		if (script!=null && script.getUpgrade()!=null){
-			
-			FasterManager fasterManager = new FasterManager(this, arg0);
 
-			for (int version = arg1;version<arg2;version++){
-				Map<Integer, List<String>> commands = JsonConfigUtil.getLoadCommands(script.getUpgrade());
-				fasterManager.executeCommands(commands.get(version));
+		Class<?> clazz = getClass();
+		if (clazz.isAnnotationPresent(FasterConfig.class)) {
+			FasterConfig config = clazz.getAnnotation(FasterConfig.class);
+
+			FasterManager fasterManager = new FasterManager(this, arg0);
+			String[] classes = ClassMapper.list(config.packageName(), context);
+			fasterManager.executeCreationSequences(classes);
+
+			Script script = verifyConfiguration();
+
+			if (script != null && script.getUpgrade() != null) {
+
+				for (int version = arg1; version < arg2; version++) {
+					Map<Integer, List<String>> commands = JsonConfigUtil.getLoadCommands(script.getUpgrade());
+					fasterManager.executeCommands(commands.get(version));
+				}
 			}
 		}
 	

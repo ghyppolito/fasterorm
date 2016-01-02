@@ -1,5 +1,6 @@
 package br.com.ghfsoftware.faster;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,6 +48,14 @@ public class FasterManager {
 	private static final String AND = "AND";
 	private static final String POINT = ".";
 	private static final String COMMA = ",";
+	private static final String SEQUENCE_TABLE = "faster_sequence";
+	private static final String SEQ_COLUMN_NAME = "name";
+	private static final String SEQ_COLUMN_VALUE = "value";
+	private static final String[] SEQ_COLUMNS = {"name", "value"};
+	private static final String SEQ_CONDITION = "name = ?";
+	private static final String GET = "get";
+	private static final String SET = "set";
+
 
 	private FasterSQLiteHelper fasterHelper;
 	private SQLiteDatabase sqlite;
@@ -179,7 +188,10 @@ public class FasterManager {
 			}
 			Table tableAnnotation = clazz.getAnnotation(Table.class);
 			String tableName = tableAnnotation.name();
-			
+
+			//Verify and apply the sequence value
+			applySequence(table);
+
 			FasterObjectMapper fMapper = FasterObjectMapper.getInstance();
 			ContentValues content = fMapper.toContentValues(table);
 			
@@ -191,6 +203,56 @@ public class FasterManager {
 		
 		
 		return valueReturn;
+	}
+
+	/**
+	 * Apply sequence value in field
+	 * @param table table class
+	 * @param <T> generic table class
+	 */
+	private <T> void applySequence(T table) {
+
+		Class<?> clazz = table.getClass();
+
+		try{
+			for (Method method : clazz.getMethods()){
+
+				if (method.isAnnotationPresent(Table.Sequence.class)){
+
+					Object value = method.invoke(table);
+
+					if (value==null) {
+
+						Table.Sequence sequenceAnnotation = method.getAnnotation(Table.Sequence.class);
+
+						String[] arguments = {sequenceAnnotation.value()};
+
+						//Get the sequence value
+						Cursor cursor = sqlite.query(false, SEQUENCE_TABLE, SEQ_COLUMNS, SEQ_CONDITION, arguments, null, null, null, null);
+
+						cursor.moveToFirst();
+						int nextValue = cursor.getInt(cursor.getColumnIndex(SEQ_COLUMN_VALUE)) + 1;
+						cursor.close();
+
+						//Update next sequence value for the table instance
+						String methodName = method.getName();
+						String setMethodName = methodName.replaceFirst(GET, SET);
+						Method setMethod = clazz.getMethod(setMethodName, method.getReturnType());
+						setMethod.invoke(table, nextValue);
+
+						//Update the next sequence value on sequence table
+						ContentValues content = new ContentValues();
+						content.put(SEQ_COLUMN_VALUE, nextValue);
+						sqlite.update(SEQUENCE_TABLE, content, SEQ_COLUMN_NAME, arguments);
+
+					}
+
+				}
+
+			}
+		} catch (Exception e) {
+			throw new InvokeException(e);
+		}
 	}
 	
 	/**
@@ -1068,6 +1130,51 @@ public class FasterManager {
 			
 		}
 		
+	}
+
+	/**
+	 * Verify and apply the sequence creation
+	 * @param classNames: class name list
+	 */
+	public void executeCreationSequences(String[] classNames){
+
+		String seqTableCommand = "CREATE TABLE IF NOT EXISTS " + SEQUENCE_TABLE + " (name TEXT PRIMARY KEY, value INT)";
+		boolean sequenceCreation = false;
+
+		for (String className : classNames) {
+
+			Class<?> clazz;
+			try {
+				clazz = Class.forName(className);
+			} catch (Exception e) {
+				throw new InitializeObjectException(e);
+			}
+
+			for (Method method : clazz.getMethods()) {
+
+				if (method.isAnnotationPresent(Table.Sequence.class)) {
+
+					Table.Sequence sequenceAnnotation = method.getAnnotation(Table.Sequence.class);
+
+					if (!sequenceCreation) {
+						sqlite.execSQL(seqTableCommand);
+						sequenceCreation = true;
+					}
+
+					String[] arguments = {sequenceAnnotation.value()};
+
+					Cursor cursor = sqlite.query(false, SEQUENCE_TABLE, SEQ_COLUMNS, SEQ_CONDITION, arguments, null, null, null, null);
+
+					if (cursor.getCount() <= 0) {
+						ContentValues content = new ContentValues();
+						content.put(SEQ_COLUMN_NAME, sequenceAnnotation.value());
+						content.put(SEQ_COLUMN_VALUE, 0);
+						sqlite.insert(SEQUENCE_TABLE, null, content);
+					}
+					cursor.close();
+				}
+			}
+		}
 	}
 
 	/**

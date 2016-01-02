@@ -13,7 +13,7 @@ public class FasterConfigInfo {
 	
 	/**
 	 * Constructor
-	 * @param debug
+	 * @param showSql: debug sql log
 	 */
 	private FasterConfigInfo(final boolean showSql){
 		this.showSql=showSql;

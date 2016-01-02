@@ -31,6 +31,24 @@ public @interface Table {
 	 * @return the lazy strategy
 	 */
 	boolean lazy() default true;
+
+	/**
+	 * Annotation to apply sequence in
+	 * identification field
+	 *
+	 * @author Gustavo Hyppolito
+	 */
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.METHOD)
+	@Documented
+	@interface Sequence{
+
+		/**
+		 * Inform the name of the sequence
+		 * @return sequence name
+		 */
+		String value();
+	}
 	
 	/**
 	 * Annotation to mapping id fields
@@ -42,7 +60,7 @@ public @interface Table {
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
 	@Documented
-	public @interface Id{
+	@interface Id{
 		
 	}
 	
@@ -56,7 +74,7 @@ public @interface Table {
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
 	@Documented
-	public @interface Column{
+	@interface Column{
 		
 		/**
 		 * SQLite types enumerator
