@@ -22,7 +22,7 @@ public class Finder {
 	
 	/**
 	 * Constructor
-	 * @param table
+	 * @param clazz: table class
 	 */
 	public <T> Finder(Class<T> clazz){
 		
@@ -33,7 +33,7 @@ public class Finder {
 	
 	/**
 	 * Add the selection fields
-	 * @param selection
+	 * @param selection: selection
 	 * @return finder
 	 */
 	public <T> Finder setSelection(Selection<T> selection){
@@ -43,7 +43,7 @@ public class Finder {
 	
 	/**
 	 * Add join tables
-	 * @param join
+	 * @param join: join tables
 	 * @return join tables
 	 */
 	public Finder addJoin(Join<?> join){
@@ -56,7 +56,7 @@ public class Finder {
 	
 	/**
 	 * Add conditions
-	 * @param condition
+	 * @param condition: condition
 	 * @return conditions
 	 */
 	public Finder addCondition(Condition condition){
@@ -69,7 +69,7 @@ public class Finder {
 	
 	/**
 	 * Add order by
-	 * @param order
+	 * @param order: order by
 	 * @return order by
 	 */
     public Finder addOrder(OrderBy order){
@@ -79,7 +79,7 @@ public class Finder {
     
     /**
      * Selected limit
-     * @param limit
+     * @param limit: limit
      * @return limit
      */
     public Finder setLimit(int limit){

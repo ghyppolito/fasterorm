@@ -19,7 +19,7 @@ public class Selection<T> {
 	 * Constructor
 	 * @param clazz: class
 	 */
-	private Selection(Class<T> clazz){
+	public Selection(Class<T> clazz){
 		this.classMapping = clazz;
 	}
 	
