@@ -26,7 +26,7 @@ public class OrderBy {
 	
 	/**
 	 * Add column
-	 * @param column
+	 * @param column column name
 	 * @return OrderBy object
 	 */
 	public OrderBy addColumn(String column){

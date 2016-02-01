@@ -14,7 +14,7 @@ public enum Order {
 	
 	/**
 	 * Constructor
-	 * @param value
+	 * @param value type ordering
 	 */
 	Order(String value){
 		this.value=value;
@@ -22,7 +22,7 @@ public enum Order {
 	
 	/**
 	 * Get value
-	 * @return value
+	 * @return type ordering
 	 */
 	public String getValue(){
 		return this.value;

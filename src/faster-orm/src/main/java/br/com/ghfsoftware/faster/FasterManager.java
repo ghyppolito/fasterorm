@@ -1,6 +1,5 @@
 package br.com.ghfsoftware.faster;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +28,7 @@ import br.com.ghfsoftware.faster.mapper.ColumnMapper;
 import br.com.ghfsoftware.faster.mapper.ParameterMapper;
 import br.com.ghfsoftware.faster.search.Condition;
 import br.com.ghfsoftware.faster.search.Finder;
+import br.com.ghfsoftware.faster.search.Having;
 import br.com.ghfsoftware.faster.search.OrderBy;
 import br.com.ghfsoftware.faster.search.Selection;
 
@@ -243,7 +243,7 @@ public class FasterManager {
 						//Update the next sequence value on sequence table
 						ContentValues content = new ContentValues();
 						content.put(SEQ_COLUMN_VALUE, nextValue);
-						sqlite.update(SEQUENCE_TABLE, content, SEQ_COLUMN_NAME, arguments);
+						sqlite.update(SEQUENCE_TABLE, content, SEQ_CONDITION, arguments);
 
 					}
 
@@ -488,6 +488,35 @@ public class FasterManager {
 		
 		return columns;
 	}
+
+	/**
+	 * Get identifiers columns name
+	 * @param clazz: class
+	 * @return identifiers columns name
+	 */
+	private <T> List<String> getIdentificators(Class<T> clazz){
+
+		List<String> columns = new ArrayList<>();
+		for (Method method : clazz.getMethods()){
+
+			if (method.isAnnotationPresent(Column.class)){
+
+				Column columnAnnotation  = method.getAnnotation(Column.class);
+
+				if (method.isAnnotationPresent(Id.class)){
+					columns.add(columnAnnotation.name());
+				}
+
+			}else if (method.isAnnotationPresent(Join.class)){
+
+				if (method.isAnnotationPresent(Id.class)) {
+					columns.addAll(getIdentificators(method.getReturnType()));
+				}
+			}
+		}
+
+		return columns;
+	}
 	
 	/**
 	 * Create list with the columns mapper
@@ -699,14 +728,22 @@ public class FasterManager {
 	public <T> Result<T> find(Finder finder) throws FasterRuntimeException{
 		
 		String tableName = finder.getTable();
+		boolean distinct = finder.isDistinct();
 		List<br.com.ghfsoftware.faster.search.Join<?>> joins = finder.getJoin();
 		List<Condition> conditions = finder.getWhere();
 		OrderBy orderBy = finder.getOrder();
+		List<String> groupBy = finder.getGroup();
+		List<Having> having = finder.getHaving();
 		Selection<T> selection = finder.getSelection();
 		int limit = finder.getLimit();
 				
 		StringBuilder sbSql = new StringBuilder();
 		sbSql.append("SELECT ");
+
+		if (distinct){
+			sbSql.append(" DISTINCT ");
+		}
+
 		boolean isFistLoop = true;
 		for (br.com.ghfsoftware.faster.search.Column column : selection.getColumns()){
 			
@@ -744,7 +781,7 @@ public class FasterManager {
 					sbSql.append(joinTableName);
 					sbSql.append(" ON ");
 					
-					List<String> idColumns = this.getAllColumns(joinClazz, true);
+					List<String> idColumns = this.getIdentificators(joinClazz);
 					
 					boolean isNeedAnd = false;
 					for (String idColumn : idColumns){
@@ -797,6 +834,46 @@ public class FasterManager {
 			}
 			
 		}
+		if (groupBy!=null && !groupBy.isEmpty()){
+			sbSql.append(" GROUP BY ");
+
+			boolean isNeedComma=false;
+			for (String column : groupBy){
+
+				if (isNeedComma){
+					sbSql.append(COMMA);
+				}
+
+				sbSql.append(column);
+				isNeedComma=true;
+			}
+		}
+
+		if (having!=null && !having.isEmpty()){
+
+			sbSql.append(" HAVING ");
+
+			boolean isNeedAnd=false;
+			for (Having condition : having){
+
+				if (isNeedAnd){
+					sbSql.append(" ");
+					sbSql.append(AND);
+					sbSql.append(" ");
+				}
+
+				sbSql.append(condition.getColumn());
+				sbSql.append(condition.getOperator().getValue());
+				sbSql.append(PARAM);
+				sbSql.append(condition.getHaving().getFunction());
+				sbSql.append("(");
+				sbSql.append(condition.getColumn());
+				sbSql.append(")");
+
+				isNeedAnd=true;
+			}
+		}
+
 		if (orderBy!=null){
 			sbSql.append(" ORDER BY ");
 			

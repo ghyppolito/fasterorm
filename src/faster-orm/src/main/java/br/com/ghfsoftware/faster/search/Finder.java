@@ -12,12 +12,15 @@ import br.com.ghfsoftware.faster.annotation.Table;
  *
  */
 public class Finder {
-	
+
+	private boolean distinct = false;
 	private String table;
 	private Selection<?> selection;
 	private List<Join<?>> join;
 	private List<Condition> where;
 	private OrderBy order;
+	private List<String> group;
+	private List<Having> having;
 	private int limit = -1;
 	
 	/**
@@ -135,8 +138,64 @@ public class Finder {
 	public int getLimit() {
 		return limit;
 	}
-    
-    
-    
 
+	/**
+	 * Get if set distinct
+	 * @return selection distinct value
+	 */
+	public boolean isDistinct() {
+		return distinct;
+	}
+
+	/**
+	 * Set distinct selection
+	 * @param distinct distinct selection
+	 * @return finder object
+	 */
+	public Finder setDistinct(boolean distinct) {
+		this.distinct = distinct;
+		return this;
+	}
+
+	/**
+	 * Add group by
+	 * @param column column name
+	 * @return finder object
+	 */
+	public Finder addGroup(String column){
+		if (this.group==null){
+			this.group = new ArrayList<>();
+		}
+		this.group.add(column);
+		return this;
+	}
+
+	/**
+	 * Get group by specification
+	 * @return group by specification
+	 */
+	public List<String> getGroup() {
+		return group;
+	}
+
+	/**
+	 * Add having conditions
+	 * @param condition: condition
+	 * @return finder object
+	 */
+	public Finder addHaving(Having condition){
+		if (this.having==null){
+			this.having = new ArrayList<>();
+		}
+		this.having.add(condition);
+		return this;
+	}
+
+	/**
+	 * Get having conditions
+	 * @return having conditions
+	 */
+	public List<Having> getHaving() {
+		return having;
+	}
 }
