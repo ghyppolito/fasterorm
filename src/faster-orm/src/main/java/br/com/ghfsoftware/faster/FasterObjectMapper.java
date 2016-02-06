@@ -59,7 +59,8 @@ public class FasterObjectMapper {
 	 * @return ContentValues
 	 */
 	public <T> ContentValues toContentValues(T table) throws FasterRuntimeException{
-		return toContentValues(null, table);
+		ContentValues content = new ContentValues();
+		return toContentValues(content, table);
 	}
 	
 	/**
@@ -93,9 +94,6 @@ public class FasterObjectMapper {
 	private <T> void setColumnValue(ContentValues content, Method method, T table) throws FasterRuntimeException{
 		
 		if (method.isAnnotationPresent(Column.class)){
-			if (content==null){
-				content = new ContentValues();
-			}
 			Column columnAnnotation = method.getAnnotation(Column.class);
 			String name = columnAnnotation.name();
 			Object value = null;
@@ -122,11 +120,6 @@ public class FasterObjectMapper {
 		
 		if (method.isAnnotationPresent(Join.class)){
 			Join joinAnnotation = method.getAnnotation(Join.class);
-
-			if (content==null){
-				content = new ContentValues();
-			}
-
 			Object relTable = null;
 			try {
 				relTable = method.invoke(table);
