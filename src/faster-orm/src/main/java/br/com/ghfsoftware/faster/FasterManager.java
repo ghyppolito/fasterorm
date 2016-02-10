@@ -283,26 +283,28 @@ public class FasterManager {
 			
 			boolean isFirstLoop = true;
 			List<String> values = new ArrayList<String>();
-			for (ColumnMapper mapper : search){
-				
-				if (!isFirstLoop){
-					sb.append(" ");
-					sb.append(AND);
-					sb.append(" ");
-				}
+			if (search!=null) {
+				for (ColumnMapper mapper : search) {
 
-				if (mapper.getRelation()==null) {
-					sb.append(mapper.getColumn().name());
-				}else{
-					sb.append(mapper.getRelation().name());
-				}
-				sb.append(EQUAL);
-				sb.append(PARAM);
-				
-				values.add(mapper.getValue()==null?null:mapper.getValue().toString());
-				content.remove(mapper.getColumn().name());
+					if (!isFirstLoop) {
+						sb.append(" ");
+						sb.append(AND);
+						sb.append(" ");
+					}
 
-				isFirstLoop = false;
+					if (mapper.getRelation() == null) {
+						sb.append(mapper.getColumn().name());
+					} else {
+						sb.append(mapper.getRelation().name());
+					}
+					sb.append(EQUAL);
+					sb.append(PARAM);
+
+					values.add(mapper.getValue() == null ? null : mapper.getValue().toString());
+					content.remove(mapper.getColumn().name());
+
+					isFirstLoop = false;
+				}
 			}
 			
 			String[] args = values.toArray(new String[]{});
@@ -481,8 +483,14 @@ public class FasterManager {
 				}
 				
 			}else if (method.isAnnotationPresent(Join.class)){
-				
-				columns.addAll(getAllColumns(method.getReturnType(), true));
+
+				if (onlyId) {
+					if (method.isAnnotationPresent(Id.class)) {
+						columns.addAll(getAllColumns(method.getReturnType(), true));
+					}
+				}else{
+					columns.addAll(getAllColumns(method.getReturnType(), true));
+				}
 			}
 		}
 		

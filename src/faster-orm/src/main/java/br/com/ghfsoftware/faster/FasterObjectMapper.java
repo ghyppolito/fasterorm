@@ -387,6 +387,7 @@ public class FasterObjectMapper {
 	 */
 	private void putValue(ContentValues content, String name, Object value) throws FasterRuntimeException{
 		
+
 		if(value instanceof String){
 			content.put(name, (String)value);
 		}else if (value instanceof Long){
@@ -401,7 +402,7 @@ public class FasterObjectMapper {
 			content.put(name, (Short)value);
 		}else if (value instanceof Date){
 			content.put(name, ((Date)value).getTime());
-		}else{
+		}else if (value != null){
 			throw new TypeNotSupportedException();
 		}
 	}
