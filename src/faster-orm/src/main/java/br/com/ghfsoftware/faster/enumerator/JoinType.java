@@ -9,14 +9,13 @@ package br.com.ghfsoftware.faster.enumerator;
 public enum JoinType {
 
 	INNER("INNER"),
-	LEFT("LEFT"),
-	RIGHT("RIGHT");
+	LEFT("LEFT");
 	
 	private String value;
 	
 	/**
 	 * Constructor
-	 * @param value
+	 * @param value join value
 	 */
 	JoinType(String value){
 		this.value = value;
