@@ -2,6 +2,7 @@ package br.com.ghfsoftware.faster;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +26,9 @@ import br.com.ghfsoftware.faster.exception.InvokeException;
 import br.com.ghfsoftware.faster.exception.SQLiteObjectRuntimeException;
 import br.com.ghfsoftware.faster.mapper.CreationExecutionMapper;
 import br.com.ghfsoftware.faster.mapper.ColumnMapper;
+import br.com.ghfsoftware.faster.mapper.FieldMapper;
 import br.com.ghfsoftware.faster.mapper.ParameterMapper;
+import br.com.ghfsoftware.faster.mapper.RelationMapper;
 import br.com.ghfsoftware.faster.search.Condition;
 import br.com.ghfsoftware.faster.search.Finder;
 import br.com.ghfsoftware.faster.search.Having;
@@ -162,13 +165,10 @@ public class FasterManager {
 	 * Indicate if the base is open
 	 * @return base state
 	 */
-	public boolean isOpen(){
-		if (this.sqlite==null){
-			return false;
-		}
-		
-		return this.sqlite.isOpen();
-	}
+	public boolean isOpen() {
+        return this.sqlite != null && this.sqlite.isOpen();
+
+    }
 	
 	/**
 	 * Insert table data
@@ -282,7 +282,7 @@ public class FasterManager {
 			StringBuilder sb = new StringBuilder();
 			
 			boolean isFirstLoop = true;
-			List<String> values = new ArrayList<String>();
+			List<String> values = new ArrayList<>();
 			if (search!=null) {
 				for (ColumnMapper mapper : search) {
 
@@ -307,7 +307,7 @@ public class FasterManager {
 				}
 			}
 			
-			String[] args = values.toArray(new String[]{});
+			String[] args = values.toArray(new String[values.size()]);
 			
 			valueReturn = sqlite.update(tableName, content, sb.toString(), args);
 			
@@ -323,7 +323,7 @@ public class FasterManager {
 	 * 
 	 * @param table: table class
 	 * @return rows removed
-	 * @throws FasterException 
+	 * @throws FasterRuntimeException
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> Integer delete(T table) throws FasterRuntimeException{
@@ -343,7 +343,7 @@ public class FasterManager {
 		
 		StringBuilder sb = new StringBuilder();
 		boolean isFirstLoop = true;
-		List<String> values = new ArrayList<String>();
+		List<String> values = new ArrayList<>();
 		for (ColumnMapper mapper : search){
 			
 			if (!isFirstLoop){
@@ -365,9 +365,9 @@ public class FasterManager {
 			isFirstLoop = false;
 		}
 		//Create args selection
-		String[] args = values.toArray(new String[]{});
+		String[] args = values.toArray(new String[values.size()]);
 		
-		valueReturn = sqlite.delete(tableName, sb.toString(), args);;
+		valueReturn = sqlite.delete(tableName, sb.toString(), args);
 		
 		return valueReturn;
 	}
@@ -397,13 +397,13 @@ public class FasterManager {
 		StringBuilder sb = new StringBuilder();
 		
 		boolean isFirstLoop = true;
-		List<String> values = new ArrayList<String>();
+		List<String> values = new ArrayList<>();
 
         List<String> columns = getAllColumns(clazz, false);
 
         Cursor cursor;
         if (search==null) {
-            cursor = sqlite.query(tableName, columns.toArray(new String[]{}), null, null, null, null, null);
+            cursor = sqlite.query(tableName, columns.toArray(new String[columns.size()]), null, null, null, null, null);
         }else{
             for (ColumnMapper mapper : search) {
 
@@ -440,7 +440,7 @@ public class FasterManager {
             //Create args selection
             String[] args = values.toArray(new String[]{});
 
-            cursor = sqlite.query(tableName, columns.toArray(new String[]{}), sb.toString(), args, null, null, null);
+            cursor = sqlite.query(tableName, columns.toArray(new String[columns.size()]), sb.toString(), args, null, null, null);
         }
 		FasterObjectMapper fMapper = FasterObjectMapper.getInstance();
 		List<T> result = fMapper.toObject(cursor, clazz);
@@ -453,7 +453,7 @@ public class FasterManager {
 			}
 		}
 		
-		Result<T> results = new Result<T>();
+		Result<T> results = new Result<>();
 		results.results = result;
 		
 		return results;
@@ -467,7 +467,7 @@ public class FasterManager {
 	 */
 	private <T> List<String> getAllColumns(Class<T> clazz, boolean onlyId){
 		
-		List<String> columns = new ArrayList<String>();
+		List<String> columns = new ArrayList<>();
 		for (Method method : clazz.getMethods()){
 			
 			if (method.isAnnotationPresent(Column.class)){
@@ -500,30 +500,33 @@ public class FasterManager {
 	/**
 	 * Get identifiers columns name
 	 * @param clazz: class
+	 * @param target target class
 	 * @return identifiers columns name
 	 */
-	private <T> List<String> getIdentificators(Class<T> clazz){
+	private <T, U> RelationMapper getIdentifiers(Class<T> clazz, Class<U> target){
 
-		List<String> columns = new ArrayList<>();
-		for (Method method : clazz.getMethods()){
+        for (Method method : clazz.getMethods()){
 
-			if (method.isAnnotationPresent(Column.class)){
-
-				Column columnAnnotation  = method.getAnnotation(Column.class);
-
-				if (method.isAnnotationPresent(Id.class)){
-					columns.add(columnAnnotation.name());
-				}
-
-			}else if (method.isAnnotationPresent(Join.class)){
-
-				if (method.isAnnotationPresent(Id.class)) {
-					columns.addAll(getIdentificators(method.getReturnType()));
-				}
-			}
+            if (method.isAnnotationPresent(Join.class) && method.getReturnType().getName().equals(target.getName())){
+                RelationMapper<T, U> relationMapper = new RelationMapper<>(clazz, target);
+                for (Join.Relation relationAnnotation : method.getAnnotation(Join.class).value()){
+                    relationMapper.addField(new FieldMapper(relationAnnotation.name(), relationAnnotation.columnRelated()));
+                }
+                return relationMapper;
+            }
 		}
 
-		return columns;
+        for (Method method : target.getMethods()) {
+            if (method.isAnnotationPresent(Join.class) && method.getReturnType().getName().equals(clazz.getName())){
+                RelationMapper<T, U> relationMapper = new RelationMapper<>(clazz, target);
+                for (Join.Relation relationAnnotation : method.getAnnotation(Join.class).value()){
+                    relationMapper.addField(new FieldMapper(relationAnnotation.columnRelated(), relationAnnotation.name()));
+                }
+                return relationMapper;
+            }
+        }
+
+		return null;
 	}
 	
 	/**
@@ -555,7 +558,7 @@ public class FasterManager {
 				if (columnMapper !=null){
 					
 					if (columnMappers ==null){
-						columnMappers = new ArrayList<ColumnMapper>();
+						columnMappers = new ArrayList<>();
 					}
 					
 					columnMappers.add(columnMapper);
@@ -576,7 +579,7 @@ public class FasterManager {
 				if (tableJoin!=null){
 					
 					if (columnMappers ==null){
-						columnMappers = new ArrayList<ColumnMapper>();
+						columnMappers = new ArrayList<>();
 					}
 
 					List<ColumnMapper> columns = createListJoinMapper(tableJoin, onlyId, relationsChild);
@@ -670,7 +673,7 @@ public class FasterManager {
 				if (method.isAnnotationPresent(Parameter.class)){
 					
 					if (params == null){
-						params = new ArrayList<ParameterMapper>();
+						params = new ArrayList<>();
 					}
 					
 					Parameter paramAnnotation = method.getAnnotation(Parameter.class);
@@ -690,13 +693,8 @@ public class FasterManager {
 							
 							ParameterMapper pMapper = new ParameterMapper(position, paramName, value);
 							params.add(pMapper);
-							
-							StringBuilder sbParam = new StringBuilder();
-							sbParam.append(PREFIX);
-							sbParam.append(paramName);
-							sbParam.append(SUFFIX);
-						
-							sqlChanded = sqlChanded.replaceFirst(sbParam.toString(), PARAM);
+
+                            sqlChanded = sqlChanded.replaceFirst(PREFIX + paramName + SUFFIX, PARAM);
 						}
 					}
 				}
@@ -710,7 +708,7 @@ public class FasterManager {
 			
 			if (FasterConfigInfo.getInstance().isShowSql()){
 				Log.d("Faster - Find SQL", sqlChanded);
-				Log.d("Faster - Find Args", args.toString());
+				Log.d("Faster - Find Args", Arrays.toString(args));
 			}
 			
 			Cursor cursor = this.sqlite.rawQuery(sqlChanded, args);
@@ -718,7 +716,7 @@ public class FasterManager {
 			FasterObjectMapper fMapper = FasterObjectMapper.getInstance();
 			List<T> result = fMapper.toObject(cursor, clazzReturn);
 		
-			Result<T> results = new Result<T>();
+			Result<T> results = new Result<>();
 			results.results = result;
 			
 			return results;
@@ -737,7 +735,7 @@ public class FasterManager {
 		
 		String tableName = finder.getTable();
 		boolean distinct = finder.isDistinct();
-		List<br.com.ghfsoftware.faster.search.Join<?>> joins = finder.getJoin();
+		List<br.com.ghfsoftware.faster.search.Join<?, ?>> joins = finder.getJoin();
 		List<Condition> conditions = finder.getWhere();
 		OrderBy orderBy = finder.getOrder();
 		List<String> groupBy = finder.getGroup();
@@ -773,54 +771,55 @@ public class FasterManager {
 		sbSql.append(" FROM ");
 		sbSql.append(tableName);
 		if (joins!=null && !joins.isEmpty()){
-			for (br.com.ghfsoftware.faster.search.Join<?> join : joins){
-				
+			for (br.com.ghfsoftware.faster.search.Join<?, ?> join : joins){
+
 				sbSql.append(" ");
 				sbSql.append(join.getJoinType().getValue());
 				sbSql.append(" ");
-				
+
 				Class<?> joinClazz = join.getTable();
+				Class<?> targetClass = join.getTarget();
 				if (joinClazz.isAnnotationPresent(Table.class)){
-					
+
 					Table tableAnnotation = joinClazz.getAnnotation(Table.class);
 					String joinTableName = tableAnnotation.name();
-					
+
 					sbSql.append("JOIN ");
 					sbSql.append(joinTableName);
 					sbSql.append(" ON ");
-					
-					List<String> idColumns = this.getIdentificators(joinClazz);
-					
+
+					RelationMapper<?, ?> relationMapper = this.getIdentifiers(joinClazz, targetClass);
+
 					boolean isNeedAnd = false;
-					for (String idColumn : idColumns){
-						
+					for (FieldMapper fieldMapper : relationMapper.getFields()){
+
 						if (isNeedAnd){
 							sbSql.append(" ");
 							sbSql.append(AND);
 							sbSql.append(" ");
 						}
-						
+
 						sbSql.append(tableName);
 						sbSql.append(POINT);
-						sbSql.append(idColumn);
+						sbSql.append(fieldMapper.getField());
 						sbSql.append(EQUAL);
 						sbSql.append(joinTableName);
 						sbSql.append(POINT);
-						sbSql.append(idColumn);
-						
+						sbSql.append(fieldMapper.getFieldRelated());
+
 						isNeedAnd=true;
 					}
-					
+
 				}else{
 					throw new AnnotationRuntimeException();
 				}
-				
+
 			}
 		}
 		List<String> parameters = null;
 		if (conditions!=null && !conditions.isEmpty()){
 			
-			parameters = new ArrayList<String>();
+			parameters = new ArrayList<>();
 			
 			sbSql.append(" WHERE ");
 			
@@ -951,7 +950,7 @@ public class FasterManager {
 				if (method.isAnnotationPresent(Parameter.class)){
 					
 					if (params == null){
-						params = new ArrayList<ParameterMapper>();
+						params = new ArrayList<>();
 					}
 					
 					Parameter paramAnnotation = method.getAnnotation(Parameter.class);
@@ -1007,8 +1006,8 @@ public class FasterManager {
 		
 		if (classes!=null && classes.length > 0){
 			
-			Map<String, CreationExecutionMapper> mapperExecution = new HashMap<String, CreationExecutionMapper>();
-			Map<String, List<String>> mapperTableDependencies = new HashMap<String, List<String>>();
+			Map<String, CreationExecutionMapper> mapperExecution = new HashMap<>();
+			Map<String, List<String>> mapperTableDependencies = new HashMap<>();
 					
 			for (String className : classes){
 

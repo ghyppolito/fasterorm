@@ -16,7 +16,7 @@ public class Finder {
 	private boolean distinct = false;
 	private String table;
 	private Selection<?> selection;
-	private List<Join<?>> join;
+	private List<Join<?, ?>> join;
 	private List<Condition> where;
 	private OrderBy order;
 	private List<String> group;
@@ -49,9 +49,9 @@ public class Finder {
 	 * @param join: join tables
 	 * @return join tables
 	 */
-	public Finder addJoin(Join<?> join){
+	public Finder addJoin(Join<?, ?> join){
 		if (this.join==null){
-			this.join = new ArrayList<Join<?>>();
+			this.join = new ArrayList<>();
 		}
 		this.join.add(join);
 		return this;
@@ -111,7 +111,7 @@ public class Finder {
 	 * Get joins table
 	 * @return joins table
 	 */
-	public List<Join<?>> getJoin() {
+	public List<Join<?, ?>> getJoin() {
 		return join;
 	}
 
